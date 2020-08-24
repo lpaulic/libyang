@@ -1,13 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include "libyang.h"
 
 int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
 {
 	struct ly_ctx *ctx = NULL;
-	static bool log = false;
+	static bool log = true;
 	const char *schema_a = "module defs {namespace urn:tests:defs;prefix d;yang-version 1.1;"
 		            "identity crypto-alg; identity interface-type; identity ethernet {base interface-type;} identity fast-ethernet {base ethernet;}}";
     const char *schema_b = "module types {namespace urn:tests:types;prefix t;yang-version 1.1; import defs {prefix defs;}"
@@ -63,18 +64,27 @@ int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
 		exit(EXIT_FAILURE);
 	}
 
-	lys_parse_mem(ctx, schema_a, LYS_IN_YANG);
-	lys_parse_mem(ctx, schema_b, LYS_IN_YANG);
+	lys_parse_mem(ctx, schema_a, LYS_IN_YANG, NULL);
+	lys_parse_mem(ctx, schema_b, LYS_IN_YANG, NULL);
 
-	data = malloc(len + 1);
+
+  char nswrapper[] = "<submodule name=\"asub\" \n"
+                     "xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n";
+
+  char wrapperend[] = "</submodule>\n";
+
+	data = malloc(len + strlen(nswrapper) + strlen(wrapperend) + 1);
 	if (data == NULL) {
 		return 0;
 	}
-	memcpy(data, buf, len);
-	data[len] = 0;
+	memcpy(data, nswrapper, strlen(nswrapper));
+	memcpy(data + strlen(nswrapper), buf, len);
+	memcpy(data + strlen(nswrapper) + len, wrapperend, strlen(wrapperend));
+	data[strlen(nswrapper) + len + strlen(wrapperend)] = 0;
 
-	lyd_parse_mem(ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY);
-	ly_ctx_destroy(ctx, NULL);
+  struct lyd_node *tree = NULL;
+	lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree);
+  ly_ctx_destroy(ctx, NULL);
 
 	free(data);
 
