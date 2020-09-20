@@ -256,7 +256,7 @@ Currently supported bindings are:
  * cmake option: `JAVASCRIPT_BINDING`
  * [README](./swig/javascript/README.md)
  
-## Fuzzing
+## Fuzzing - test change
 
 Multiple YANG fuzzing targets and fuzzing instructions are available in the
 `tests/fuzz` directory.
